@@ -1,6 +1,6 @@
 // src/components/StarknetProvider.tsx
 import React, { useEffect } from 'react';
-import { StarknetConfig, publicProvider, ready, braavos, voyager } from '@starknet-react/core';
+import { StarknetConfig, publicProvider, argent, braavos, voyager } from '@starknet-react/core';
 import { mainnet, sepolia } from '@starknet-react/chains';
 
 interface StarknetProviderProps {
@@ -8,7 +8,7 @@ interface StarknetProviderProps {
 }
 
 export const StarknetProvider: React.FC<StarknetProviderProps> = ({ children }) => {
-  const connectors = [braavos(), ready()];
+  const connectors = [braavos(), argent()];
 
   // Debug logging: Check available connectors on mount
   useEffect(() => {
@@ -28,6 +28,7 @@ export const StarknetProvider: React.FC<StarknetProviderProps> = ({ children }) 
       provider={publicProvider()} // Use default public provider or configure custom RPC (e.g., Infura, Alchemy)
       connectors={connectors} // Supported wallet connectors
       explorer={voyager} // Blockchain explorer for transaction links
+      autoConnect={true} // Automatically connect to previously connected wallet
     >
       {children}
     </StarknetConfig>
