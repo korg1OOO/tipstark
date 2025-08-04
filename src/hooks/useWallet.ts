@@ -17,6 +17,7 @@ export const useWallet = () => {
   });
 
   useEffect(() => {
+    console.log('Wallet status changed:', { status, address, balance: balanceData });
     setWallet({
       connected: status === 'connected',
       address: address || null,
@@ -27,10 +28,12 @@ export const useWallet = () => {
   const connectWallet = useCallback(
     async (connector: Connector) => {
       try {
+        console.log('Attempting to connect with:', connector.name);
         await connect({ connector });
+        console.log('Connect call completed');
       } catch (error) {
         console.error('Failed to connect wallet:', error);
-        alert('Failed to connect wallet. Please ensure Argent X or Braavos is installed and try again.');
+        alert('Failed to connect wallet. Please ensure the wallet is installed and unlocked.');
       }
     },
     [connect]

@@ -11,12 +11,6 @@ interface WalletButtonProps {
   connectors: Connector[];
 }
 
-const getInstallUrl = (id: string): string => {
-  if (id === 'braavos') return 'https://braavos.app/download/';
-  if (id === 'ready') return 'https://www.argent.xyz/argent-x/';
-  return '#';
-};
-
 export const WalletButton: React.FC<WalletButtonProps> = ({
   wallet,
   onConnect,
@@ -33,7 +27,6 @@ export const WalletButton: React.FC<WalletButtonProps> = ({
       setShowDropdown(false);
     } catch (error) {
       console.error('Connection error:', error);
-      alert('Failed to connect. Make sure the wallet extension is installed and enabled.');
     } finally {
       setIsConnecting(false);
     }
@@ -52,25 +45,19 @@ export const WalletButton: React.FC<WalletButtonProps> = ({
         </button>
         {showDropdown && (
           <div className="absolute right-0 mt-2 w-64 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 py-2 z-50">
-            {connectors.length === 0 ? (
+            {connectors.map((connector) => (
+              <button
+                key={connector.id}
+                onClick={() => handleConnect(connector)}
+                disabled={isConnecting}
+                className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+              >
+                Connect {connector.name}
+              </button>
+            ))}
+            {connectors.length === 0 && (
               <div className="px-4 py-3 text-sm text-gray-700 dark:text-gray-300">
-                No wallets detected. Please install Ready Wallet or Braavos.
-              </div>
-            ) : (
-              connectors.map((connector) => (
-                <button
-                  key={connector.id}
-                  onClick={() => handleConnect(connector)}
-                  disabled={isConnecting}
-                  className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                >
-                  Connect {connector.name}
-                </button>
-              ))
-            )}
-            {connectors.every((connector) => !connector.available()) && (
-              <div className="px-4 py-3 text-sm text-gray-700 dark:text-gray-300 border-t border-gray-200 dark:border-gray-700">
-                If the wallet is installed but not showing, try refreshing the page or checking extension permissions for localhost.
+                No wallets configured.
               </div>
             )}
           </div>
