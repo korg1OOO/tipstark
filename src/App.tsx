@@ -149,7 +149,7 @@ function App() {
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center gap-3">
               <img
-                src="/public/image.png"
+                src="/image.png"
                 alt="TipStark Logo"
                 className="w-10 h-10 rounded-xl object-cover"
               />
@@ -233,7 +233,7 @@ function App() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="text-center">
             <div className="flex items-center justify-center gap-2 mb-4">
-              <img src="/public/image.png" alt="TipStark" className="w-6 h-6 rounded object-cover" />
+              <img src="/image.png" alt="TipStark" className="w-6 h-6 rounded object-cover" />
               <span className="text-xl font-bold text-gray-900 dark:text-white">TipStark</span>
             </div>
             <p className="text-gray-600 dark:text-gray-300 mb-4">

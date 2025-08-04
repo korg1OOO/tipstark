@@ -1,6 +1,6 @@
 // src/components/StarknetProvider.tsx
-import React from 'react';
-import { StarknetConfig, publicProvider, argent, braavos, useInjectedConnectors, voyager } from '@starknet-react/core';
+import React, { useEffect } from 'react';
+import { StarknetConfig, publicProvider, ready, braavos, voyager } from '@starknet-react/core';
 import { mainnet, sepolia } from '@starknet-react/chains';
 
 interface StarknetProviderProps {
@@ -8,11 +8,19 @@ interface StarknetProviderProps {
 }
 
 export const StarknetProvider: React.FC<StarknetProviderProps> = ({ children }) => {
-  const { connectors } = useInjectedConnectors({
-    recommended: [argent(), braavos()],
-    includeRecommended: 'onlyIfNoConnectors', // Show recommended connectors only if no wallets are installed
-    order: 'random', // Randomize connector order
-  });
+  const connectors = [braavos(), ready()];
+
+  // Debug logging: Check available connectors on mount
+  useEffect(() => {
+    console.log('Available connectors:', connectors);
+    connectors.forEach((connector) => {
+      console.log(`Connector ${connector.name} details:`, {
+        id: connector.id,
+        name: connector.name,
+        available: connector.available(),
+      });
+    });
+  }, []);
 
   return (
     <StarknetConfig
