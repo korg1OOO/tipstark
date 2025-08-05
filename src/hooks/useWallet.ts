@@ -5,7 +5,7 @@ import { Connector } from '@starknet-react/core';
 import { WalletState } from '../types';
 
 export const useWallet = () => {
-  const { address, status } = useAccount();
+  const { address, status, connector } = useAccount(); // Added connector for debugging
   const { connectAsync, connectors } = useConnect();
   const { disconnect } = useDisconnect();
   const { data: balanceData } = useBalance({ address, watch: true });
@@ -17,13 +17,13 @@ export const useWallet = () => {
   });
 
   useEffect(() => {
-    console.log('Wallet status changed:', { status, address, balance: balanceData });
+    console.log('Wallet status changed:', { status, address, connector: connector?.name, balanceData });
     setWallet({
       connected: status === 'connected',
       address: address || null,
       balance: balanceData ? Number(balanceData.value) / 10 ** 18 : 0,
     });
-  }, [address, status, balanceData]);
+  }, [address, status, balanceData, connector]);
 
   const connectWallet = useCallback(
     async (connector: Connector) => {
@@ -33,7 +33,7 @@ export const useWallet = () => {
         console.log('Connect call completed');
       } catch (error) {
         console.error('Failed to connect wallet:', error);
-        alert('Failed to connect wallet. Please try again and ensure you approve the connection in your wallet.');
+        alert(`Failed to connect wallet: ${error.message}. Please ensure the wallet is unlocked and on the correct network (Mainnet).`);
       }
     },
     [connectAsync]
