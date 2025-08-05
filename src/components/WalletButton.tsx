@@ -32,6 +32,18 @@ export const WalletButton: React.FC<WalletButtonProps> = ({
     }
   };
 
+  if (wallet.status === 'connecting' || isConnecting) {
+    return (
+      <button
+        disabled
+        className="flex items-center gap-2 bg-blue-600 text-white px-6 py-2.5 rounded-xl font-semibold opacity-50 cursor-not-allowed"
+      >
+        <Wallet size={20} />
+        Connecting...
+      </button>
+    );
+  }
+
   if (!wallet.connected) {
     return (
       <div className="relative">
@@ -41,7 +53,7 @@ export const WalletButton: React.FC<WalletButtonProps> = ({
           className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-2.5 rounded-xl font-semibold transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
         >
           <Wallet size={20} />
-          {isConnecting ? 'Connecting...' : 'Connect Wallet'}
+          Connect Wallet
         </button>
         {showDropdown && (
           <div className="absolute right-0 mt-2 w-64 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 py-2 z-50">
@@ -79,7 +91,7 @@ export const WalletButton: React.FC<WalletButtonProps> = ({
           <div className="text-sm font-semibold">
             {wallet.address ? `${wallet.address.slice(0, 6)}...${wallet.address.slice(-4)}` : 'Connected'}
           </div>
-          <div className="text-xs text-gray-400">{wallet.balance.toFixed(2)} $STRK</div>
+          <div className="text-xs text-gray-400">{wallet.balance.toFixed(2)} STRK</div>
         </div>
         <ChevronDown size={16} className={`transition-transform ${showDropdown ? 'rotate-180' : ''}`} />
       </button>
@@ -92,7 +104,7 @@ export const WalletButton: React.FC<WalletButtonProps> = ({
           </div>
           <div className="px-4 py-3">
             <div className="text-sm text-gray-700 dark:text-gray-300">Balance</div>
-            <div className="text-lg font-bold text-gray-900 dark:text-white">{wallet.balance.toFixed(2)} $STRK</div>
+            <div className="text-lg font-bold text-gray-900 dark:text-white">{wallet.balance.toFixed(2)} STRK</div>
           </div>
           <button
             onClick={() => {
