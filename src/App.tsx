@@ -1,3 +1,4 @@
+// src/App.tsx
 import React, { useState, useMemo, useEffect } from 'react';
 import { Zap, Heart, Sparkles } from 'lucide-react';
 import { WalletButton } from './components/WalletButton';
@@ -9,12 +10,12 @@ import { Stats } from './components/Stats';
 import { useWallet } from './hooks/useWallet';
 import { mockCreators, mockTips } from './data/mockData';
 import { Creator, Tip } from './types';
-import { useAccount, useContract, useTransactionReceipt } from '@starknet-react/core';
-import { CallData } from 'starknet';
-import type { Abi } from 'starknet';
+import { CallData, Provider } from 'starknet';
 
 // Replace with your deployed contract address
 const CONTRACT_ADDRESS = '0xYOUR_CONTRACT_ADDRESS_HERE'; // Update after deployment
+const RPC_URL = 'https://starknet-mainnet.public.blastapi.io'; // Public RPC for Mainnet
+
 const CONTRACT_ABI = [
   {
     type: 'function',
@@ -33,27 +34,14 @@ const CONTRACT_ABI = [
     outputs: [{ type: 'u256' }],
     state_mutability: 'view',
   },
-] as const satisfies Abi;
+];
 
 function App() {
-  const { wallet, connect, disconnect, updateBalance, connectors } = useWallet();
+  const { wallet, connect, disconnect, updateBalance } = useWallet();
   const [selectedCreator, setSelectedCreator] = useState<Creator | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [tips, setTips] = useState<Tip[]>(mockTips);
-  const [latestTxHash, setLatestTxHash] = useState<string | undefined>();
-
-  // Account for executing transactions
-  const { account } = useAccount();
-
-  // Contract setup (optional, if needed for other purposes)
-  const { contract } = useContract({
-    abi: CONTRACT_ABI,
-    address: CONTRACT_ADDRESS,
-  });
-
-  // Track transaction status
-  const { data: txReceipt } = useTransactionReceipt({ hash: latestTxHash, watch: true });
 
   // Filtered creators
   const filteredCreators = useMemo(() => {
@@ -68,7 +56,7 @@ function App() {
 
   // Handle tipping
   const handleTip = async (amount: number, message: string) => {
-    if (!selectedCreator || !wallet.connected || !account) {
+    if (!selectedCreator || !wallet.connected || !wallet.account) {
       alert('Please connect your wallet and select a creator.');
       return;
     }
@@ -80,14 +68,11 @@ function App() {
         entrypoint: 'tip',
         calldata: CallData.compile({
           recipient: selectedCreator.address,
-          amount: { 
-            low: amountInWei & ((1n << 128n) - 1n), 
-            high: amountInWei >> 128n 
-          },
+          amount: { low: amountInWei, high: 0 },
         }),
       };
 
-      const result = await account.execute([call]);
+      const result = await wallet.account.execute([call]);
       const newTip: Tip = {
         id: Date.now().toString(),
         sender: wallet.address!,
@@ -95,11 +80,11 @@ function App() {
         amount,
         timestamp: Date.now(),
         message,
-        txHash: result.transaction_hash,
+        txHash: result.transaction_hash || 'pending',
+        status: 'pending', // Add status
       };
 
       setTips((prev) => [newTip, ...prev]);
-      setLatestTxHash(result.transaction_hash);
       updateBalance(wallet.balance - amount);
     } catch (error) {
       console.error('Failed to send tip:', error);
@@ -107,19 +92,42 @@ function App() {
     }
   };
 
-  // Update transaction status
+  // Poll for transaction status
   useEffect(() => {
-    if (txReceipt?.finality_status === 'ACCEPTED_ON_L2' && latestTxHash) {
-      setTips((prev) =>
-        prev.map((tip) =>
-          tip.txHash === latestTxHash
-            ? { ...tip } // You can add a status field if desired, e.g., status: 'confirmed'
-            : tip
-        )
-      );
-      // Optionally: setLatestTxHash(undefined);
+    const pollTransactions = async () => {
+      const provider = new Provider({ rpc: RPC_URL });
+      const updatedTips = [...tips];
+      let needsUpdate = false;
+
+      for (let i = 0; i < updatedTips.length; i++) {
+        const tip = updatedTips[i];
+        if (tip.status === 'pending' && tip.txHash !== 'pending') {
+          try {
+            const receipt = await provider.getTransactionReceipt(tip.txHash);
+            if (receipt.status === 'ACCEPTED_ON_L2' || receipt.status === 'ACCEPTED_ON_L1') {
+              updatedTips[i] = { ...tip, status: 'confirmed' };
+              needsUpdate = true;
+            } else if (receipt.status === 'REJECTED') {
+              updatedTips[i] = { ...tip, status: 'failed' };
+              needsUpdate = true;
+            }
+          } catch (error) {
+            console.error('Failed to fetch receipt for tx:', tip.txHash, error);
+          }
+        }
+      }
+
+      if (needsUpdate) {
+        setTips(updatedTips);
+      }
+    };
+
+    if (tips.some((tip) => tip.status === 'pending')) {
+      pollTransactions();
+      const interval = setInterval(pollTransactions, 10000); // Poll every 10 seconds
+      return () => clearInterval(interval);
     }
-  }, [txReceipt, latestTxHash]);
+  }, [tips]);
 
   // Calculate total stats
   const totalStats = useMemo(() => {
@@ -149,7 +157,7 @@ function App() {
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center gap-3">
               <img
-                src="image.png"
+                src="/image.png"
                 alt="TipStark Logo"
                 className="w-10 h-10 rounded-xl object-cover"
               />
@@ -162,7 +170,6 @@ function App() {
               wallet={wallet}
               onConnect={connect}
               onDisconnect={disconnect}
-              connectors={connectors}
             />
           </div>
         </div>
@@ -233,7 +240,7 @@ function App() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="text-center">
             <div className="flex items-center justify-center gap-2 mb-4">
-              <img src="image.png" alt="TipStark" className="w-6 h-6 rounded object-cover" />
+              <img src="/image.png" alt="TipStark" className="w-6 h-6 rounded object-cover" />
               <span className="text-xl font-bold text-gray-900 dark:text-white">TipStark</span>
             </div>
             <p className="text-gray-600 dark:text-gray-300 mb-4">

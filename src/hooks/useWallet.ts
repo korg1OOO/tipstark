@@ -1,62 +1,82 @@
 // src/hooks/useWallet.ts
 import { useState, useCallback, useEffect } from 'react';
-import { useAccount, useConnect, useDisconnect, useBalance } from '@starknet-react/core';
-import { Connector } from '@starknet-react/core';
+import { Provider, CallData } from 'starknet';
 import { WalletState } from '../types';
 
-export const useWallet = () => {
-  const { address, status, connector } = useAccount(); // Added connector for debugging
-  const { connectAsync, connectors } = useConnect();
-  const { disconnect } = useDisconnect();
-  const { data: balanceData } = useBalance({ address, watch: true });
+const STRK_ADDRESS = '0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d'; // STRK on Mainnet
+const RPC_URL = 'https://starknet-mainnet.public.blastapi.io'; // Public RPC for Mainnet
 
+export const useWallet = () => {
   const [wallet, setWallet] = useState<WalletState>({
     connected: false,
     address: null,
     balance: 0,
   });
 
-  useEffect(() => {
-    console.log('Wallet status changed:', { status, address, connector: connector?.name, balanceData });
-    setWallet({
-      connected: status === 'connected',
-      address: address || null,
-      balance: balanceData ? Number(balanceData.value) / 10 ** 18 : 0,
-    });
-  }, [address, status, balanceData, connector]);
-
-  const connectWallet = useCallback(
-    async (connector: Connector) => {
-      try {
-        console.log('Attempting to connect with:', connector.name);
-        await connectAsync({ connector });
-        console.log('Connect call completed');
-      } catch (error) {
-        console.error('Failed to connect wallet:', error);
-        alert(`Failed to connect wallet: ${error.message}. Please ensure the wallet is unlocked and on the correct network (Mainnet).`);
+  const connect = useCallback(async () => {
+    try {
+      if (!window.starknet_braavos) {
+        alert('Braavos wallet not detected. Please install the Braavos extension.');
+        return;
       }
-    },
-    [connectAsync]
-  );
 
-  const disconnectWallet = useCallback(() => {
-    disconnect();
+      await window.starknet_braavos.enable({ starknetVersion: 'v5' }); // Try v5, fallback to v4 if needed
+
+      const address = window.starknet_braavos.account.address;
+      setWallet({
+        connected: true,
+        address,
+        balance: 0,
+      });
+    } catch (error) {
+      console.error('Failed to connect wallet:', error);
+      alert('Failed to connect wallet. Please make sure Braavos is unlocked and try again.');
+    }
+  }, []);
+
+  const disconnect = useCallback(() => {
     setWallet({
       connected: false,
       address: null,
       balance: 0,
     });
-  }, [disconnect]);
+  }, []);
 
   const updateBalance = useCallback((newBalance: number) => {
     setWallet((prev) => ({ ...prev, balance: newBalance }));
   }, []);
 
+  // Fetch balance when connected
+  useEffect(() => {
+    if (wallet.connected && wallet.address) {
+      const fetchBalance = async () => {
+        try {
+          const provider = new Provider({ rpc: RPC_URL });
+          const call = {
+            contractAddress: STRK_ADDRESS,
+            entrypoint: 'balanceOf',
+            calldata: CallData.compile([wallet.address]),
+          };
+          const response = await provider.callContract(call);
+          const low = BigInt(response[0]);
+          const high = BigInt(response[1]);
+          const balanceBN = high * (2n ** 128n) + low;
+          const balance = Number(balanceBN / 10n ** 18n);
+          setWallet((prev) => ({ ...prev, balance }));
+        } catch (error) {
+          console.error('Failed to fetch balance:', error);
+        }
+      };
+      fetchBalance();
+      const interval = setInterval(fetchBalance, 30000); // Refresh every 30s
+      return () => clearInterval(interval);
+    }
+  }, [wallet.connected, wallet.address]);
+
   return {
     wallet,
-    connect: connectWallet,
-    disconnect: disconnectWallet,
+    connect,
+    disconnect,
     updateBalance,
-    connectors,
   };
 };
