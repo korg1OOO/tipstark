@@ -35,7 +35,9 @@ function App() {
       const creatorsSnapshot = await getDocs(collection(db, "profiles"));
       const creatorsList = creatorsSnapshot.docs.map((doc) => ({
         id: doc.id,
+        address: doc.id.toLowerCase(), // Normalize to lowercase
         ...doc.data(),
+        social: doc.data().social || { twitter: '', github: '', website: '' }, // Ensure social is always an object
       } as Creator));
       setCreators(creatorsList);
 
@@ -188,10 +190,10 @@ function App() {
     };
 
     // Save to Firestore with address as doc id
-    await setDoc(doc(db, "profiles", wallet.address!), newCreator);
+    await setDoc(doc(db, "profiles", wallet.address!.toLowerCase()), newCreator); // Normalize to lowercase
 
     // Update local state
-    let updatedCreators = creators.filter((c) => c.address !== wallet.address);
+    let updatedCreators = creators.filter((c) => c.address.toLowerCase() !== wallet.address!.toLowerCase());
     updatedCreators.push({
       id: wallet.address!,
       address: wallet.address!,
@@ -314,7 +316,7 @@ function App() {
         isOpen={isProfileOpen}
         onClose={() => setIsProfileOpen(false)}
         onSave={handleSaveProfile}
-        initialData={creators.find((c) => c.id === wallet.address)}
+        initialData={creators.find((c) => c.address.toLowerCase() === wallet.address.toLowerCase())}
       />
 
       <footer className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 mt-16">
