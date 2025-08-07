@@ -11,6 +11,8 @@ import { ProfileModal } from './components/ProfileModal';
 import { useWallet } from './hooks/useWallet';
 import { Creator, Tip } from './types';
 import { CallData, Provider } from 'starknet';
+import { collection, addDoc, getDocs, doc, setDoc, query, orderBy, limit } from "firebase/firestore"; 
+import { db } from './firebaseConfig'; // Import the Firestore instance
 
 // Replace with your deployed contract address
 const CONTRACT_ADDRESS = '0xYOUR_CONTRACT_ADDRESS_HERE'; // Update after deployment
@@ -22,111 +24,36 @@ function App() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [tips, setTips] = useState<Tip[]>([]);
-  const [creators, setCreators] = useState<Creator[]>([
-    {
-      id: '1',
-      address: '0xdeadbeef0001',
-      name: 'David Barreto',
-      avatar: 'https://pbs.twimg.com/profile_images/1920267093200506880/fpVaTqEA.jpg',
-      bio: 'Developer Advocate @ Starknet Foundation davidbarreto.stark',
-      category: 'Advocate',
-      totalTips: 0,
-      tipCount: 0,
-      verified: true,
-      social: {
-        twitter: '@barretodavid',
-        website: 'https://davidbarreto.stark'
-      }
-    },
-    {
-      id: '2',
-      address: '0xdeadbeef0002',
-      name: 'thannhn.eth',
-      avatar: 'https://pbs.twimg.com/profile_images/1920496919169671168/Yta25uVs.jpg',
-      bio: 'Web3 developer, @Starknet wolf.',
-      category: 'Developer',
-      totalTips: 0,
-      tipCount: 0,
-      verified: true,
-      social: {
-        twitter: '@thann199'
-      }
-    },
-    {
-      id: '3',
-      address: '0xdeadbeef0003',
-      name: 'Uche',
-      avatar: 'https://pbs.twimg.com/profile_images/1895894870868234240/cW6YtSHo.jpg',
-      bio: 'Host, Starknet Espresso | Smart contract developer | Solidity | Cairo | Learning Rust | ...',
-      category: 'Creator',
-      totalTips: 0,
-      tipCount: 0,
-      verified: true,
-      social: {
-        twitter: '@uche2v'
-      }
-    },
-    {
-      id: '4',
-      address: '0xdeadbeef0004',
-      name: 'Filip Laurentiu',
-      avatar: 'https://pbs.twimg.com/profile_images/1438393460135014407/u0sBZPG4.jpg',
-      bio: 'Blockchain Developer. #Ethereum & #Starknet Learning #ZK Building @starkswirl',
-      category: 'Developer',
-      totalTips: 0,
-      tipCount: 0,
-      verified: false,
-      social: {
-        twitter: '@filiplaurentiu'
-      }
-    },
-    {
-      id: '5',
-      address: '0xdeadbeef0005',
-      name: 'Zizou',
-      avatar: 'https://pbs.twimg.com/profile_images/1636317792734412801/_mLtCvzA.png',
-      bio: 'Smart contract/Software developer. Starknet pilled 🦀 Currently working @PropellerSwap',
-      category: 'Developer',
-      totalTips: 0,
-      tipCount: 0,
-      verified: false,
-      social: {
-        twitter: '@zizou_0x'
-      }
-    },
-    {
-      id: '6',
-      address: '0xdeadbeef0006',
-      name: 'Garrancha',
-      avatar: 'https://pbs.twimg.com/profile_images/1849371840495353856/NryZxagn.jpg',
-      bio: 'building @LayerAkira - the first hybrid orderbook on #starknet Core infra HFT C++ developer 2023 ETHGlobal Finalist',
-      category: 'Developer',
-      totalTips: 0,
-      tipCount: 0,
-      verified: false,
-      social: {
-        twitter: '@GarranchaAkira'
-      }
-    },
-  ]);
+  const [creators, setCreators] = useState<Creator[]>([]);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
 
   const handleEditProfile = () => setIsProfileOpen(true);
 
-  // Load user tips and creators from localStorage
+  // Fetch creators and tips from Firestore
   useEffect(() => {
-    const storedTips = localStorage.getItem('userTips');
-    if (storedTips) {
-      setTips(JSON.parse(storedTips));
-    }
+    const fetchData = async () => {
+      // Fetch creators
+      const creatorsSnapshot = await getDocs(collection(db, "profiles"));
+      const creatorsList = creatorsSnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      } as Creator));
+      setCreators(creatorsList);
 
-    const storedCreators = localStorage.getItem('userCreators');
-    if (storedCreators) {
-      setCreators((prev) => [...prev, ...JSON.parse(storedCreators)]);
-    }
+      // Fetch recent tips (e.g., last 50)
+      const tipsQuery = query(collection(db, "tips"), orderBy("timestamp", "desc"), limit(50));
+      const tipsSnapshot = await getDocs(tipsQuery);
+      const tipsList = tipsSnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+      } as Tip));
+      setTips(tipsList);
+    };
+
+    fetchData();
   }, []);
 
-  // Fetch totalTips for creators
+  // Fetch totalTips from contract for creators
   useEffect(() => {
     const fetchTips = async () => {
       const provider = new Provider({ rpc: RPC_URL });
@@ -150,8 +77,10 @@ function App() {
       );
       setCreators(updatedCreators);
     };
-    fetchTips();
-  }, []);
+    if (creators.length > 0) {
+      fetchTips();
+    }
+  }, [creators]);
 
   // Filtered creators
   const filteredCreators = useMemo(() => {
@@ -194,8 +123,10 @@ function App() {
         status: 'pending',
       };
 
+      // Save to Firestore
+      await addDoc(collection(db, "tips"), newTip);
+
       setTips((prev) => [newTip, ...prev]);
-      localStorage.setItem('userTips', JSON.stringify([newTip, ...tips]));
       updateBalance(wallet.balance - amount);
     } catch (error) {
       console.error('Failed to send tip:', error);
@@ -215,12 +146,17 @@ function App() {
         if (tip.status === 'pending' && tip.txHash !== 'pending') {
           try {
             const receipt = await provider.getTransactionReceipt(tip.txHash);
+            let newStatus = tip.status;
             if (receipt.status === 'ACCEPTED_ON_L2' || receipt.status === 'ACCEPTED_ON_L1') {
-              updatedTips[i] = { ...tip, status: 'confirmed' };
-              needsUpdate = true;
+              newStatus = 'confirmed';
             } else if (receipt.status === 'REJECTED') {
-              updatedTips[i] = { ...tip, status: 'failed' };
+              newStatus = 'failed';
+            }
+            if (newStatus !== tip.status) {
+              updatedTips[i] = { ...tip, status: newStatus };
               needsUpdate = true;
+              // Update in Firestore
+              await setDoc(doc(db, "tips", tip.id), { status: newStatus }, { merge: true });
             }
           } catch (error) {
             console.error('Failed to fetch receipt for tx:', tip.txHash, error);
@@ -230,7 +166,6 @@ function App() {
 
       if (needsUpdate) {
         setTips(updatedTips);
-        localStorage.setItem('userTips', JSON.stringify(updatedTips));
       }
     };
 
@@ -242,29 +177,30 @@ function App() {
   }, [tips]);
 
   // Handle profile save
-  const handleSaveProfile = (data: Partial<Creator>) => {
+  const handleSaveProfile = async (data: Partial<Creator>) => {
     const newCreator = {
-      id: Date.now().toString(),
-      address: wallet.address!,
+      name: data.name,
+      bio: data.bio,
+      category: data.category,
       avatar: data.avatar || 'https://placeholder.com/200x200',
+      social: data.social || { twitter: '', github: '', website: '' },
       verified: false,
       totalTips: 0,
       tipCount: 0,
-      ...data,
     };
 
-    let updatedCreators;
-    if (creators.some((c) => c.address === wallet.address)) {
-      updatedCreators = creators.map((c) =>
-        c.address === wallet.address ? newCreator : c
-      );
-    } else {
-      updatedCreators = [...creators, newCreator];
-    }
+    // Save to Firestore with address as doc id
+    await setDoc(doc(db, "profiles", wallet.address!), newCreator);
 
+    // Update local state
+    let updatedCreators = creators.filter((c) => c.address !== wallet.address);
+    updatedCreators.push({
+      id: wallet.address!,
+      address: wallet.address!,
+      ...newCreator,
+    });
     setCreators(updatedCreators);
-    const userCreators = updatedCreators.filter((c) => !c.address.startsWith('0xdeadbeef'));
-    localStorage.setItem('userCreators', JSON.stringify(userCreators));
+
     setIsProfileOpen(false);
   };
 
