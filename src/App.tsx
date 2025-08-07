@@ -1,4 +1,3 @@
-// src/App.tsx
 import React, { useState, useMemo, useEffect } from 'react';
 import { Zap, Heart, Sparkles } from 'lucide-react';
 import { WalletButton } from './components/WalletButton';
@@ -14,9 +13,9 @@ import { CallData, Provider } from 'starknet';
 import { collection, addDoc, getDocs, doc, setDoc, query, orderBy, limit } from "firebase/firestore"; 
 import { db } from './firebaseConfig'; // Import the Firestore instance
 
-// Replace with your deployed contract address
-const CONTRACT_ADDRESS = '0xYOUR_CONTRACT_ADDRESS_HERE'; // Update after deployment
-const RPC_URL = 'https://starknet-mainnet.public.blastapi.io'; // Public RPC for Mainnet
+// Replace with your deployed contract address on Sepolia
+const CONTRACT_ADDRESS = '0xYOUR_SEPOLIA_CONTRACT_ADDRESS_HERE'; // Update after deployment on Sepolia
+const RPC_URL = 'https://starknet-sepolia.public.blastapi.io'; // Sepolia testnet RPC
 
 function App() {
   const { wallet, connect, disconnect, updateBalance } = useWallet();
@@ -36,7 +35,6 @@ function App() {
       const creatorsSnapshot = await getDocs(collection(db, "profiles"));
       const creatorsList = creatorsSnapshot.docs.map((doc) => ({
         id: doc.id,
-        address: doc.id,
         ...doc.data(),
       } as Creator));
       setCreators(creatorsList);
@@ -316,7 +314,7 @@ function App() {
         isOpen={isProfileOpen}
         onClose={() => setIsProfileOpen(false)}
         onSave={handleSaveProfile}
-        initialData={creators.find((c) => c.address === wallet.address)}
+        initialData={creators.find((c) => c.id === wallet.address)}
       />
 
       <footer className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 mt-16">

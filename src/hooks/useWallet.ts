@@ -3,8 +3,8 @@ import { useState, useCallback, useEffect } from 'react';
 import { Provider, CallData } from 'starknet';
 import { WalletState } from '../types';
 
-const STRK_ADDRESS = '0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d'; // STRK on Mainnet
-const RPC_URL = 'https://starknet-mainnet.public.blastapi.io'; // Public RPC for Mainnet
+const STRK_ADDRESS = '0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d'; // STRK on Sepolia testnet
+const RPC_URL = 'https://starknet-sepolia.public.blastapi.io'; // Sepolia testnet RPC
 
 export const useWallet = () => {
   const [wallet, setWallet] = useState<WalletState>({
