@@ -7,6 +7,7 @@ import { TipModal } from './components/TipModal';
 import { SearchBar } from './components/SearchBar';
 import { TipHistory } from './components/TipHistory';
 import { Stats } from './components/Stats';
+import { ProfileModal } from './components/ProfileModal';
 import { useWallet } from './hooks/useWallet';
 import { Creator, Tip } from './types';
 import { CallData, Provider } from 'starknet';
@@ -109,6 +110,8 @@ function App() {
     },
   ]);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+
+  const handleEditProfile = () => setIsProfileOpen(true);
 
   // Load user tips and creators from localStorage
   useEffect(() => {
