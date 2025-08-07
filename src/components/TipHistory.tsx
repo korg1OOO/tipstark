@@ -1,3 +1,4 @@
+// src/components/TipHistory.tsx
 import React from 'react';
 import { Clock, ExternalLink } from 'lucide-react';
 import { Tip } from '../types';
@@ -66,6 +67,11 @@ export const TipHistory: React.FC<TipHistoryProps> = ({ tips }) => {
                 <Clock size={12} />
                 {formatTime(tip.timestamp)}
               </div>
+              {tip.status && (
+                <span className={`text-xs font-semibold ${tip.status === 'pending' ? 'text-yellow-500' : tip.status === 'confirmed' ? 'text-green-500' : 'text-red-500'}`}>
+                  {tip.status.charAt(0).toUpperCase() + tip.status.slice(1)}
+                </span>
+              )}
             </div>
             
             <a

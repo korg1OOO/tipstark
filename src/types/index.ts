@@ -22,13 +22,13 @@ export interface Tip {
   recipient: string;
   amount: number;
   timestamp: number;
-  message?: string;
+  message: string;
   txHash: string;
+  status?: 'pending' | 'confirmed' | 'failed';
 }
 
 export interface WalletState {
   connected: boolean;
   address: string | null;
   balance: number;
-  status: string; // Add this
 }

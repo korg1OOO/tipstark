@@ -8,7 +8,6 @@ import { SearchBar } from './components/SearchBar';
 import { TipHistory } from './components/TipHistory';
 import { Stats } from './components/Stats';
 import { useWallet } from './hooks/useWallet';
-import { mockCreators, mockTips } from './data/mockData';
 import { Creator, Tip } from './types';
 import { CallData, Provider } from 'starknet';
 
@@ -16,43 +15,151 @@ import { CallData, Provider } from 'starknet';
 const CONTRACT_ADDRESS = '0xYOUR_CONTRACT_ADDRESS_HERE'; // Update after deployment
 const RPC_URL = 'https://starknet-mainnet.public.blastapi.io'; // Public RPC for Mainnet
 
-const CONTRACT_ABI = [
-  {
-    type: 'function',
-    name: 'tip',
-    inputs: [
-      { name: 'recipient', type: 'felt252' },
-      { name: 'amount', type: 'u256' },
-    ],
-    outputs: [],
-    state_mutability: 'external',
-  },
-  {
-    type: 'function',
-    name: 'get_tips',
-    inputs: [{ name: 'recipient', type: 'felt252' }],
-    outputs: [{ type: 'u256' }],
-    state_mutability: 'view',
-  },
-];
-
 function App() {
   const { wallet, connect, disconnect, updateBalance } = useWallet();
   const [selectedCreator, setSelectedCreator] = useState<Creator | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
-  const [tips, setTips] = useState<Tip[]>(mockTips);
+  const [tips, setTips] = useState<Tip[]>([]);
+  const [creators, setCreators] = useState<Creator[]>([
+    {
+      id: '1',
+      address: '0xdeadbeef0001',
+      name: 'David Barreto',
+      avatar: 'https://pbs.twimg.com/profile_images/1920267093200506880/fpVaTqEA.jpg',
+      bio: 'Developer Advocate @ Starknet Foundation davidbarreto.stark',
+      category: 'Advocate',
+      totalTips: 0,
+      tipCount: 0,
+      verified: true,
+      social: {
+        twitter: '@barretodavid',
+        website: 'https://davidbarreto.stark'
+      }
+    },
+    {
+      id: '2',
+      address: '0xdeadbeef0002',
+      name: 'thannhn.eth',
+      avatar: 'https://pbs.twimg.com/profile_images/1920496919169671168/Yta25uVs.jpg',
+      bio: 'Web3 developer, @Starknet wolf.',
+      category: 'Developer',
+      totalTips: 0,
+      tipCount: 0,
+      verified: true,
+      social: {
+        twitter: '@thann199'
+      }
+    },
+    {
+      id: '3',
+      address: '0xdeadbeef0003',
+      name: 'Uche',
+      avatar: 'https://pbs.twimg.com/profile_images/1895894870868234240/cW6YtSHo.jpg',
+      bio: 'Host, Starknet Espresso | Smart contract developer | Solidity | Cairo | Learning Rust | ...',
+      category: 'Creator',
+      totalTips: 0,
+      tipCount: 0,
+      verified: true,
+      social: {
+        twitter: '@uche2v'
+      }
+    },
+    {
+      id: '4',
+      address: '0xdeadbeef0004',
+      name: 'Filip Laurentiu',
+      avatar: 'https://pbs.twimg.com/profile_images/1438393460135014407/u0sBZPG4.jpg',
+      bio: 'Blockchain Developer. #Ethereum & #Starknet Learning #ZK Building @starkswirl',
+      category: 'Developer',
+      totalTips: 0,
+      tipCount: 0,
+      verified: false,
+      social: {
+        twitter: '@filiplaurentiu'
+      }
+    },
+    {
+      id: '5',
+      address: '0xdeadbeef0005',
+      name: 'Zizou',
+      avatar: 'https://pbs.twimg.com/profile_images/1636317792734412801/_mLtCvzA.png',
+      bio: 'Smart contract/Software developer. Starknet pilled 🦀 Currently working @PropellerSwap',
+      category: 'Developer',
+      totalTips: 0,
+      tipCount: 0,
+      verified: false,
+      social: {
+        twitter: '@zizou_0x'
+      }
+    },
+    {
+      id: '6',
+      address: '0xdeadbeef0006',
+      name: 'Garrancha',
+      avatar: 'https://pbs.twimg.com/profile_images/1849371840495353856/NryZxagn.jpg',
+      bio: 'building @LayerAkira - the first hybrid orderbook on #starknet Core infra HFT C++ developer 2023 ETHGlobal Finalist',
+      category: 'Developer',
+      totalTips: 0,
+      tipCount: 0,
+      verified: false,
+      social: {
+        twitter: '@GarranchaAkira'
+      }
+    },
+  ]);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
+
+  // Load user tips and creators from localStorage
+  useEffect(() => {
+    const storedTips = localStorage.getItem('userTips');
+    if (storedTips) {
+      setTips(JSON.parse(storedTips));
+    }
+
+    const storedCreators = localStorage.getItem('userCreators');
+    if (storedCreators) {
+      setCreators((prev) => [...prev, ...JSON.parse(storedCreators)]);
+    }
+  }, []);
+
+  // Fetch totalTips for creators
+  useEffect(() => {
+    const fetchTips = async () => {
+      const provider = new Provider({ rpc: RPC_URL });
+      const updatedCreators = await Promise.all(
+        creators.map(async (creator) => {
+          try {
+            const response = await provider.callContract({
+              contractAddress: CONTRACT_ADDRESS,
+              entrypoint: 'get_tips',
+              calldata: CallData.compile([creator.address]),
+            });
+            const low = BigInt(response[0]);
+            const high = BigInt(response[1]);
+            const totalTips = Number((high * (2n ** 128n) + low) / (10n ** 18n));
+            return { ...creator, totalTips };
+          } catch (error) {
+            console.error('Failed to fetch tips for', creator.address, error);
+            return creator;
+          }
+        })
+      );
+      setCreators(updatedCreators);
+    };
+    fetchTips();
+  }, []);
 
   // Filtered creators
   const filteredCreators = useMemo(() => {
-    return mockCreators.filter((creator) => {
+    return creators.filter((creator) => {
       const matchesSearch =
         creator.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         creator.bio.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesCategory = selectedCategory === 'All' || creator.category === selectedCategory;
       return matchesSearch && matchesCategory;
     });
-  }, [searchTerm, selectedCategory]);
+  }, [searchTerm, selectedCategory, creators]);
 
   // Handle tipping
   const handleTip = async (amount: number, message: string) => {
@@ -81,10 +188,11 @@ function App() {
         timestamp: Date.now(),
         message,
         txHash: result.transaction_hash || 'pending',
-        status: 'pending', // Add status
+        status: 'pending',
       };
 
       setTips((prev) => [newTip, ...prev]);
+      localStorage.setItem('userTips', JSON.stringify([newTip, ...tips]));
       updateBalance(wallet.balance - amount);
     } catch (error) {
       console.error('Failed to send tip:', error);
@@ -119,6 +227,7 @@ function App() {
 
       if (needsUpdate) {
         setTips(updatedTips);
+        localStorage.setItem('userTips', JSON.stringify(updatedTips));
       }
     };
 
@@ -129,17 +238,44 @@ function App() {
     }
   }, [tips]);
 
+  // Handle profile save
+  const handleSaveProfile = (data: Partial<Creator>) => {
+    const newCreator = {
+      id: Date.now().toString(),
+      address: wallet.address!,
+      avatar: data.avatar || 'https://placeholder.com/200x200',
+      verified: false,
+      totalTips: 0,
+      tipCount: 0,
+      ...data,
+    };
+
+    let updatedCreators;
+    if (creators.some((c) => c.address === wallet.address)) {
+      updatedCreators = creators.map((c) =>
+        c.address === wallet.address ? newCreator : c
+      );
+    } else {
+      updatedCreators = [...creators, newCreator];
+    }
+
+    setCreators(updatedCreators);
+    const userCreators = updatedCreators.filter((c) => !c.address.startsWith('0xdeadbeef'));
+    localStorage.setItem('userCreators', JSON.stringify(userCreators));
+    setIsProfileOpen(false);
+  };
+
   // Calculate total stats
   const totalStats = useMemo(() => {
     const totalTips = tips.length;
-    const totalCreators = mockCreators.length;
-    const totalAmount = mockCreators.reduce((sum, creator) => sum + creator.totalTips, 0);
-    const topCreator = mockCreators.reduce((top, creator) =>
+    const totalCreators = creators.length;
+    const totalAmount = creators.reduce((sum, creator) => sum + creator.totalTips, 0);
+    const topCreator = creators.reduce((top, creator) =>
       creator.totalTips > top.totalTips ? creator : top
     ).name;
 
     return { totalTips, totalCreators, totalAmount, topCreator };
-  }, [tips]);
+  }, [tips, creators]);
 
   // Render loading or error state if applicable
   if (!wallet) {
@@ -170,6 +306,7 @@ function App() {
               wallet={wallet}
               onConnect={connect}
               onDisconnect={disconnect}
+              onEditProfile={handleEditProfile}
             />
           </div>
         </div>
@@ -234,6 +371,13 @@ function App() {
         onClose={() => setSelectedCreator(null)}
         onTip={handleTip}
         walletBalance={wallet.balance}
+      />
+
+      <ProfileModal
+        isOpen={isProfileOpen}
+        onClose={() => setIsProfileOpen(false)}
+        onSave={handleSaveProfile}
+        initialData={creators.find((c) => c.address === wallet.address)}
       />
 
       <footer className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 mt-16">

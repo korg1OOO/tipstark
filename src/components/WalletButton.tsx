@@ -7,12 +7,14 @@ interface WalletButtonProps {
   wallet: WalletState;
   onConnect: () => void;
   onDisconnect: () => void;
+  onEditProfile: () => void;
 }
 
 export const WalletButton: React.FC<WalletButtonProps> = ({
   wallet,
   onConnect,
   onDisconnect,
+  onEditProfile,
 }) => {
   const [isConnecting, setIsConnecting] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
@@ -69,6 +71,15 @@ export const WalletButton: React.FC<WalletButtonProps> = ({
             <div className="text-sm text-gray-700 dark:text-gray-300">Balance</div>
             <div className="text-lg font-bold text-gray-900 dark:text-white">{wallet.balance.toFixed(2)} $STRK</div>
           </div>
+          <button
+            onClick={() => {
+              onEditProfile();
+              setShowDropdown(false);
+            }}
+            className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+          >
+            Edit Profile
+          </button>
           <button
             onClick={() => {
               onDisconnect();

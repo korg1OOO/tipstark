@@ -47,8 +47,8 @@ export const TipModal: React.FC<TipModalProps> = ({
   const canTip = currentAmount > 0 && currentAmount <= walletBalance;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm flex items-center justify-center p-2 z-50">
-      <div className="bg-white dark:bg-gray-800 rounded-2xl max-w-lg relative overflow-hidden shadow-xl">
+    <div className="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm flex items-center justify-center p-2 z-50 overflow-y-auto">
+      <div className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto relative overflow-hidden shadow-xl">
         {/* Header with gradient background */}
         <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-4 text-white relative">
           <div className="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-full -translate-y-12 translate-x-12"></div>
@@ -216,7 +216,7 @@ export const TipModal: React.FC<TipModalProps> = ({
           {/* Footer note */}
           <div className="text-center">
             <p className="text-xs text-gray-500 dark:text-gray-400">
-              Tips sent to creator's Starknet wallet
+              Tips are sent directly to the creator's Starknet wallet
             </p>
           </div>
         </div>
