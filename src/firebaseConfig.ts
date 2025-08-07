@@ -1,5 +1,6 @@
+// src/firebaseConfig.ts
 import { initializeApp } from "firebase/app";
-import { getFirestore } from "firebase/firestore";
+import { initializeFirestore } from "firebase/firestore";
 
 // Replace with your Firebase config
 const firebaseConfig = {
@@ -13,4 +14,4 @@ const firebaseConfig = {
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
-export const db = getFirestore(app, { experimentalForceLongPolling: true });
+export const db = initializeFirestore(app, { experimentalForceLongPolling: true });
