@@ -53,9 +53,10 @@ function App() {
     fetchData();
   }, []);
 
-  // Fetch totalTips from contract for creators
+  // Fetch totalTips for creators
   useEffect(() => {
     const fetchTips = async () => {
+      if (creators.length === 0) return;
       const provider = new Provider({ rpc: RPC_URL });
       const updatedCreators = await Promise.all(
         creators.map(async (creator) => {
@@ -71,15 +72,13 @@ function App() {
             return { ...creator, totalTips };
           } catch (error) {
             console.error('Failed to fetch tips for', creator.address, error);
-            return creator;
+            return { ...creator, totalTips: 0 };
           }
         })
       );
       setCreators(updatedCreators);
     };
-    if (creators.length > 0) {
-      fetchTips();
-    }
+    fetchTips();
   }, [creators]);
 
   // Filtered creators
@@ -208,10 +207,10 @@ function App() {
   const totalStats = useMemo(() => {
     const totalTips = tips.length;
     const totalCreators = creators.length;
-    const totalAmount = creators.reduce((sum, creator) => sum + creator.totalTips, 0);
-    const topCreator = creators.reduce((top, creator) =>
-      creator.totalTips > top.totalTips ? creator : top
-    ).name;
+    const totalAmount = creators.reduce((sum, creator) => sum + (creator.totalTips || 0), 0);
+    const topCreator = creators.reduce((top, creator) => {
+      return (creator.totalTips || 0) > (top.totalTips || 0) ? creator : top;
+    }, { totalTips: -Infinity, name: '' }).name;
 
     return { totalTips, totalCreators, totalAmount, topCreator };
   }, [tips, creators]);
