@@ -204,8 +204,8 @@ function App() {
     // Update local state
     let updatedCreators = creators.filter((c) => c.address.toLowerCase() !== wallet.address.toLowerCase());
     updatedCreators.push({
-      id: wallet.address!,
-      address: wallet.address!,
+      id: wallet.address.toLowerCase(),
+      address: wallet.address.toLowerCase(),
       ...newCreator,
     });
     setCreators(updatedCreators);

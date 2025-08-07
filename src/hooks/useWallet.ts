@@ -11,6 +11,7 @@ export const useWallet = () => {
     connected: false,
     address: null,
     balance: 0,
+    account: null, // Initialize account
   });
 
   const connect = useCallback(async () => {
@@ -27,6 +28,7 @@ export const useWallet = () => {
         connected: true,
         address,
         balance: 0,
+        account: window.starknet_braavos.account,
       });
     } catch (error) {
       console.error('Failed to connect wallet:', error);
@@ -39,6 +41,7 @@ export const useWallet = () => {
       connected: false,
       address: null,
       balance: 0,
+      account: null,
     });
   }, []);
 

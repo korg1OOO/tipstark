@@ -31,4 +31,5 @@ export interface WalletState {
   connected: boolean;
   address: string | null;
   balance: number;
+  account?: any; // Add account property
 }
