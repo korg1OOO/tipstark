@@ -36,6 +36,7 @@ function App() {
       const creatorsSnapshot = await getDocs(collection(db, "profiles"));
       const creatorsList = creatorsSnapshot.docs.map((doc) => ({
         id: doc.id,
+        address: doc.id,
         ...doc.data(),
       } as Creator));
       setCreators(creatorsList);
@@ -208,9 +209,9 @@ function App() {
     const totalTips = tips.length;
     const totalCreators = creators.length;
     const totalAmount = creators.reduce((sum, creator) => sum + (creator.totalTips || 0), 0);
-    const topCreator = creators.reduce((top, creator) => {
+    const topCreator = creators.length > 0 ? creators.reduce((top, creator) => {
       return (creator.totalTips || 0) > (top.totalTips || 0) ? creator : top;
-    }, { totalTips: -Infinity, name: '' }).name;
+    }, creators[0]).name : 'N/A';
 
     return { totalTips, totalCreators, totalAmount, topCreator };
   }, [tips, creators]);
