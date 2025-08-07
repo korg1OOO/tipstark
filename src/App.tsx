@@ -1,3 +1,4 @@
+// src/App.tsx
 import React, { useState, useMemo, useEffect } from 'react';
 import { Zap, Heart, Sparkles } from 'lucide-react';
 import { WalletButton } from './components/WalletButton';
@@ -26,7 +27,13 @@ function App() {
   const [creators, setCreators] = useState<Creator[]>([]);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
 
-  const handleEditProfile = () => setIsProfileOpen(true);
+  const handleEditProfile = () => {
+    if (!wallet.connected || !wallet.address) {
+      alert('Please connect your wallet to edit your profile.');
+      return;
+    }
+    setIsProfileOpen(true);
+  };
 
   // Fetch creators and tips from Firestore
   useEffect(() => {
@@ -178,6 +185,8 @@ function App() {
 
   // Handle profile save
   const handleSaveProfile = async (data: Partial<Creator>) => {
+    if (!wallet.address) return;
+
     const newCreator = {
       name: data.name,
       bio: data.bio,
@@ -190,10 +199,10 @@ function App() {
     };
 
     // Save to Firestore with address as doc id
-    await setDoc(doc(db, "profiles", wallet.address!.toLowerCase()), newCreator); // Normalize to lowercase
+    await setDoc(doc(db, "profiles", wallet.address.toLowerCase()), newCreator);
 
     // Update local state
-    let updatedCreators = creators.filter((c) => c.address.toLowerCase() !== wallet.address!.toLowerCase());
+    let updatedCreators = creators.filter((c) => c.address.toLowerCase() !== wallet.address.toLowerCase());
     updatedCreators.push({
       id: wallet.address!,
       address: wallet.address!,
@@ -316,7 +325,7 @@ function App() {
         isOpen={isProfileOpen}
         onClose={() => setIsProfileOpen(false)}
         onSave={handleSaveProfile}
-        initialData={creators.find((c) => c.address.toLowerCase() === wallet.address.toLowerCase())}
+        initialData={creators.find((c) => c.address.toLowerCase() === wallet.address?.toLowerCase())}
       />
 
       <footer className="bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 mt-16">
