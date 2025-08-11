@@ -15,7 +15,7 @@ import { collection, addDoc, getDocs, doc, setDoc, query, orderBy, limit } from 
 import { db } from './firebaseConfig'; // Import the Firestore instance
 
 // Replace with your deployed contract address on Sepolia
-const CONTRACT_ADDRESS = '0xYOUR_SEPOLIA_CONTRACT_ADDRESS_HERE'; // Update after deployment on Sepolia
+const CONTRACT_ADDRESS = '0x075b3b2b254d6146008c11e348d843140ff7a5d9c93c17e835272c952ae369bb'; // Update after deployment on Sepolia
 const RPC_URL = 'https://starknet-sepolia.public.blastapi.io'; // Sepolia testnet RPC
 
 function App() {
