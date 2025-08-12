@@ -16,6 +16,7 @@ import { db } from './firebaseConfig'; // Import the Firestore instance
 
 // Replace with your deployed contract address on Sepolia
 const CONTRACT_ADDRESS = '0x075b3b2b254d6146008c11e348d843140ff7a5d9c93c17e835272c952ae369bb'; // Update after deployment on Sepolia
+const STRK_ADDRESS = '0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d'; // STRK on Sepolia testnet
 const RPC_URL = 'https://starknet-sepolia.public.blastapi.io'; // Sepolia testnet RPC
 
 function App() {
@@ -76,7 +77,8 @@ function App() {
             });
             const low = BigInt(response[0]);
             const high = BigInt(response[1]);
-            const totalTips = Number((high * (2n ** 128n) + low) / (10n ** 18n));
+            const total = (high * (2n ** 128n)) + low;
+            const totalTips = Number(total / (10n ** 18n)); // Fixed conversion
             return { ...creator, totalTips };
           } catch (error) {
             console.error('Failed to fetch tips for', creator.address, error);
@@ -107,18 +109,48 @@ function App() {
       return;
     }
 
+    if (selectedCreator.address.toLowerCase() === wallet.address?.toLowerCase()) {
+      alert('Cannot tip yourself!');
+      return;
+    }
+
     try {
+      const provider = new Provider({ rpc: RPC_URL });
       const amountInWei = BigInt(Math.floor(amount * 10 ** 18));
-      const call = {
+
+      // Check allowance
+      const allowanceCall = await provider.callContract({
+        contractAddress: STRK_ADDRESS,
+        entrypoint: 'allowance',
+        calldata: CallData.compile([wallet.address, CONTRACT_ADDRESS]),
+      });
+      const allowanceLow = BigInt(allowanceCall[0]);
+      const allowanceHigh = BigInt(allowanceCall[1]);
+      const allowance = (allowanceHigh * (2n ** 128n)) + allowanceLow;
+
+      let calls = [];
+
+      if (allowance < amountInWei) {
+        const approveCall = {
+          contractAddress: STRK_ADDRESS,
+          entrypoint: 'approve',
+          calldata: CallData.compile([CONTRACT_ADDRESS, amountInWei, 0n]), // Approve exact amount
+        };
+        calls.push(approveCall);
+      }
+
+      const tipCall = {
         contractAddress: CONTRACT_ADDRESS,
         entrypoint: 'tip',
         calldata: CallData.compile({
           recipient: selectedCreator.address,
-          amount: { low: amountInWei, high: 0 },
+          amount: { low: amountInWei, high: 0n },
         }),
       };
+      calls.push(tipCall);
 
-      const result = await wallet.account.execute([call]);
+      const result = await wallet.account.execute(calls);
+
       const newTip: Tip = {
         id: Date.now().toString(),
         sender: wallet.address!,
@@ -134,14 +166,14 @@ function App() {
       await addDoc(collection(db, "tips"), newTip);
 
       setTips((prev) => [newTip, ...prev]);
-      updateBalance(wallet.balance - amount);
+      updateBalance(wallet.balance - amount); // Optimistic update
     } catch (error) {
       console.error('Failed to send tip:', error);
       alert('Failed to send tip. Please try again.');
     }
   };
 
-  // Poll for transaction status
+  // Poll for transaction status and refresh balance on confirm
   useEffect(() => {
     const pollTransactions = async () => {
       const provider = new Provider({ rpc: RPC_URL });
@@ -156,6 +188,18 @@ function App() {
             let newStatus = tip.status;
             if (receipt.status === 'ACCEPTED_ON_L2' || receipt.status === 'ACCEPTED_ON_L1') {
               newStatus = 'confirmed';
+              // Refresh balance on confirm
+              const call = {
+                contractAddress: STRK_ADDRESS,
+                entrypoint: 'balanceOf',
+                calldata: CallData.compile([wallet.address]),
+              };
+              const response = await provider.callContract(call);
+              const low = BigInt(response[0]);
+              const high = BigInt(response[1]);
+              const balanceBN = (high * (2n ** 128n)) + low;
+              const balance = Number(balanceBN / 10n ** 18n);
+              updateBalance(balance);
             } else if (receipt.status === 'REJECTED') {
               newStatus = 'failed';
             }
@@ -181,7 +225,7 @@ function App() {
       const interval = setInterval(pollTransactions, 10000); // Poll every 10 seconds
       return () => clearInterval(interval);
     }
-  }, [tips]);
+  }, [tips, wallet.address, updateBalance]);
 
   // Handle profile save
   const handleSaveProfile = async (data: Partial<Creator>) => {
