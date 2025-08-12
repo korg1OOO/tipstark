@@ -12,6 +12,15 @@ const shortenAddress = (address: string) => {
   return `${address.slice(0, 6)}...${address.slice(-4)}`;
 };
 
+const escapeHtml = (unsafe: string) => {
+  return unsafe
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+};
+
 export const TipHistory: React.FC<TipHistoryProps> = ({ tips }) => {
   const formatTime = (timestamp: number) => {
     const now = Date.now();
@@ -27,7 +36,9 @@ export const TipHistory: React.FC<TipHistoryProps> = ({ tips }) => {
     return `${days} days ago`;
   };
 
-  if (tips.length === 0) {
+  const displayedTips = tips.slice(0, 5);
+
+  if (displayedTips.length === 0) {
     return (
       <div className="bg-white dark:bg-gray-800 rounded-2xl p-8 text-center">
         <Clock className="mx-auto mb-4 text-gray-400" size={48} />
@@ -46,7 +57,7 @@ export const TipHistory: React.FC<TipHistoryProps> = ({ tips }) => {
       <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-6">Recent Tips</h3>
       
       <div className="space-y-4">
-        {tips.map((tip) => (
+        {displayedTips.map((tip) => (
           <div
             key={tip.id}
             className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-xl"
@@ -64,7 +75,7 @@ export const TipHistory: React.FC<TipHistoryProps> = ({ tips }) => {
               
               {tip.message && (
                 <p className="text-sm text-gray-600 dark:text-gray-300 mb-1">
-                  "{tip.message}"
+                  "{escapeHtml(tip.message)}"
                 </p>
               )}
               
@@ -80,7 +91,7 @@ export const TipHistory: React.FC<TipHistoryProps> = ({ tips }) => {
             </div>
             
             <a
-              href={`https://voyager.online/tx/${tip.txHash}`}
+              href={`https://sepolia.voyager.online/tx/${tip.txHash}`}
               target="_blank"
               rel="noopener noreferrer"
               className="p-2 text-gray-400 hover:text-blue-500 transition-colors"

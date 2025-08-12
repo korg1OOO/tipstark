@@ -1,3 +1,4 @@
+// src/components/SearchBar.tsx
 import React from 'react';
 import { Search, Filter } from 'lucide-react';
 

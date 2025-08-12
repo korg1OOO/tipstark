@@ -2,7 +2,7 @@
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { StarknetConfig, publicProvider, argent, braavos, useInjectedConnectors, voyager } from '@starknet-react/core';
-import { mainnet, sepolia } from '@starknet-react/chains';
+import { sepolia } from '@starknet-react/chains';
 import App from './App.tsx';
 import './index.css';
 

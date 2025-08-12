@@ -11,7 +11,7 @@ import { ProfileModal } from './components/ProfileModal';
 import { useWallet } from './hooks/useWallet';
 import { Creator, Tip } from './types';
 import { CallData, Provider } from 'starknet';
-import { collection, addDoc, getDocs, doc, setDoc, query, orderBy, limit } from "firebase/firestore"; 
+import { collection, addDoc, getDocs, doc, setDoc, query, orderBy, limit, updateDoc, increment } from "firebase/firestore"; 
 import { db } from './firebaseConfig'; // Import the Firestore instance
 
 // Replace with your deployed contract address on Sepolia
@@ -41,21 +41,39 @@ function App() {
     const fetchData = async () => {
       // Fetch creators
       const creatorsSnapshot = await getDocs(collection(db, "profiles"));
-      const creatorsList = creatorsSnapshot.docs.map((doc) => ({
-        id: doc.id,
-        address: doc.id.toLowerCase(), // Normalize to lowercase
-        ...doc.data(),
-        social: doc.data().social || { twitter: '', github: '', website: '' }, // Ensure social is always an object
-      } as Creator));
+      const creatorsList: Creator[] = creatorsSnapshot.docs.map((doc) => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          address: doc.id.toLowerCase(), // Normalize to lowercase
+          name: data.name || '',
+          avatar: data.avatar || 'https://placeholder.com/200x200',
+          bio: data.bio || '',
+          category: data.category || 'Developer',
+          totalTips: data.totalTips || 0,
+          tipCount: data.tipCount || 0,
+          verified: !!data.verified,
+          social: data.social || { twitter: '', github: '', website: '' },
+        };
+      });
       setCreators(creatorsList);
 
       // Fetch recent tips (e.g., last 50)
       const tipsQuery = query(collection(db, "tips"), orderBy("timestamp", "desc"), limit(50));
       const tipsSnapshot = await getDocs(tipsQuery);
-      const tipsList = tipsSnapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      } as Tip));
+      const tipsList: Tip[] = tipsSnapshot.docs.map((doc) => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          sender: data.sender || '',
+          recipient: data.recipient || '',
+          amount: data.amount || 0,
+          timestamp: data.timestamp || 0,
+          message: data.message || '',
+          txHash: data.txHash || '',
+          status: data.status || 'pending',
+        };
+      });
       setTips(tipsList);
     };
 
@@ -75,6 +93,7 @@ function App() {
               entrypoint: 'get_tips',
               calldata: CallData.compile([creator.address]),
             });
+            if (response.length !== 2) throw new Error('Invalid tips response');
             const low = BigInt(response[0]);
             const high = BigInt(response[1]);
             const total = (high * (2n ** 128n)) + low;
@@ -124,6 +143,7 @@ function App() {
         entrypoint: 'allowance',
         calldata: CallData.compile([wallet.address, CONTRACT_ADDRESS]),
       });
+      if (allowanceCall.length !== 2) throw new Error('Invalid allowance response');
       const allowanceLow = BigInt(allowanceCall[0]);
       const allowanceHigh = BigInt(allowanceCall[1]);
       const allowance = (allowanceHigh * (2n ** 128n)) + allowanceLow;
@@ -134,7 +154,7 @@ function App() {
         const approveCall = {
           contractAddress: STRK_ADDRESS,
           entrypoint: 'approve',
-          calldata: CallData.compile([CONTRACT_ADDRESS, amountInWei, 0n]), // Approve exact amount
+          calldata: CallData.compile([CONTRACT_ADDRESS, { low: amountInWei, high: 0n }]),
         };
         calls.push(approveCall);
       }
@@ -142,10 +162,7 @@ function App() {
       const tipCall = {
         contractAddress: CONTRACT_ADDRESS,
         entrypoint: 'tip',
-        calldata: CallData.compile({
-          recipient: selectedCreator.address,
-          amount: { low: amountInWei, high: 0n },
-        }),
+        calldata: CallData.compile([selectedCreator.address, { low: amountInWei, high: 0n }]),
       };
       calls.push(tipCall);
 
@@ -167,6 +184,15 @@ function App() {
 
       setTips((prev) => [newTip, ...prev]);
       updateBalance(wallet.balance - amount); // Optimistic update
+
+      // Optimistic tipCount update
+      setCreators((prev) =>
+        prev.map((c) =>
+          c.address.toLowerCase() === selectedCreator.address.toLowerCase()
+            ? { ...c, tipCount: c.tipCount + 1 }
+            : c
+        )
+      );
     } catch (error) {
       console.error('Failed to send tip:', error);
       alert('Failed to send tip. Please try again.');
@@ -195,11 +221,25 @@ function App() {
                 calldata: CallData.compile([wallet.address]),
               };
               const response = await provider.callContract(call);
+              if (response.length !== 2) throw new Error('Invalid balance response');
               const low = BigInt(response[0]);
               const high = BigInt(response[1]);
               const balanceBN = (high * (2n ** 128n)) + low;
               const balance = Number(balanceBN / 10n ** 18n);
               updateBalance(balance);
+
+              // Update tipCount in Firestore
+              const creatorRef = doc(db, "profiles", tip.recipient.toLowerCase());
+              await updateDoc(creatorRef, { tipCount: increment(1) });
+
+              // Update local creators
+              setCreators((prev) =>
+                prev.map((c) =>
+                  c.address.toLowerCase() === tip.recipient.toLowerCase()
+                    ? { ...c, tipCount: c.tipCount + 1 }
+                    : c
+                )
+              );
             } else if (receipt.status === 'REJECTED') {
               newStatus = 'failed';
             }
@@ -211,6 +251,10 @@ function App() {
             }
           } catch (error) {
             console.error('Failed to fetch receipt for tx:', tip.txHash, error);
+            // Mark as failed on error (timeout or other)
+            updatedTips[i] = { ...tip, status: 'failed' };
+            needsUpdate = true;
+            await setDoc(doc(db, "tips", tip.id), { status: 'failed' }, { merge: true });
           }
         }
       }

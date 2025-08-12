@@ -23,7 +23,7 @@ export const useWallet = () => {
 
       await window.starknet_braavos.enable({ starknetVersion: 'v5' }); // Try v5, fallback to v4 if needed
 
-      const address = window.starknet_braavos.account.address;
+      const address = window.starknet_braavos.account.address.toLowerCase();
       setWallet({
         connected: true,
         address,
@@ -61,6 +61,7 @@ export const useWallet = () => {
             calldata: CallData.compile([wallet.address]),
           };
           const response = await provider.callContract(call);
+          if (response.length !== 2) throw new Error('Invalid balance response');
           const low = BigInt(response[0]);
           const high = BigInt(response[1]);
           const balanceBN = high * (2n ** 128n) + low;

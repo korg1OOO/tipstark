@@ -1,3 +1,4 @@
+// src/components/TipModal.tsx
 import React, { useState } from 'react';
 import { X, Zap, AlertCircle, Heart, Star, Gift } from 'lucide-react';
 import { Creator } from '../types';
@@ -29,7 +30,7 @@ export const TipModal: React.FC<TipModalProps> = ({
   const handleTip = async () => {
     const tipAmount = customAmount ? parseFloat(customAmount) : amount;
     
-    if (tipAmount <= 0 || tipAmount > walletBalance) return;
+    if (tipAmount <= 0 || tipAmount > walletBalance || isNaN(tipAmount)) return;
     
     setIsProcessing(true);
     try {
@@ -44,7 +45,7 @@ export const TipModal: React.FC<TipModalProps> = ({
   };
 
   const currentAmount = customAmount ? parseFloat(customAmount) || 0 : amount;
-  const canTip = currentAmount > 0 && currentAmount <= walletBalance;
+  const canTip = currentAmount > 0 && currentAmount <= walletBalance && !isNaN(currentAmount);
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-60 backdrop-blur-sm flex items-center justify-center p-2 z-50 overflow-y-auto">

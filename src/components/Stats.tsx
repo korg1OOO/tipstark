@@ -1,3 +1,4 @@
+// src/components/Stats.tsx
 import React from 'react';
 import { TrendingUp, Users, Zap, Award } from 'lucide-react';
 

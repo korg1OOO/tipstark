@@ -1,5 +1,6 @@
+// src/components/CreatorCard.tsx
 import React from 'react';
-import { Heart, Zap, ExternalLink, Github, Globe } from 'lucide-react';
+import { Heart, Zap, ExternalLink, Github, Globe, X as XIcon } from 'lucide-react';
 import { Creator } from '../types';
 
 interface CreatorCardProps {
@@ -80,7 +81,7 @@ export const CreatorCard: React.FC<CreatorCardProps> = ({ creator, onTip }) => {
                 rel="noopener noreferrer"
                 className="p-2 text-gray-400 hover:text-blue-400 transition-colors"
               >
-                <ExternalLink size={18} />
+                <XIcon size={18} />
               </a>
             )}
           </div>

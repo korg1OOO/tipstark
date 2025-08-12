@@ -14,6 +14,15 @@ interface ProfileModalProps {
 
 const categories = ['Developer', 'Designer', 'Creator', 'Researcher', 'Advocate', 'Other'];
 
+const isValidUrl = (url: string) => {
+  try {
+    new URL(url);
+    return true;
+  } catch {
+    return false;
+  }
+};
+
 export const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, onSave, initialData }) => {
   const [formData, setFormData] = useState<Partial<Creator>>({
     name: '',
@@ -66,6 +75,12 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, onS
   const handleSubmit = async () => {
     setUploading(true);
     let avatarUrl = avatarUrlInput; // Use URL input as default
+
+    if (avatarUrl && !isValidUrl(avatarUrl)) {
+      alert('Invalid avatar URL.');
+      setUploading(false);
+      return;
+    }
 
     if (avatarFile) {
       try {
