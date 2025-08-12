@@ -2,6 +2,8 @@
 import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import { Creator } from '../types';
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { storage } from '../firebaseConfig'; // Import storage
 
 interface ProfileModalProps {
   isOpen: boolean;
@@ -20,6 +22,9 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, onS
     avatar: '',
     social: { twitter: '', github: '', website: '' },
   });
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [avatarUrlInput, setAvatarUrlInput] = useState(''); // Separate state for URL input
 
   useEffect(() => {
     if (initialData) {
@@ -30,6 +35,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, onS
         avatar: initialData.avatar,
         social: initialData.social || { twitter: '', github: '', website: '' },
       });
+      setAvatarUrlInput(initialData.avatar || '');
     }
   }, [initialData]);
 
@@ -46,8 +52,35 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, onS
     }));
   };
 
-  const handleSubmit = () => {
-    onSave(formData);
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      if (file.type.startsWith('image/')) {
+        setAvatarFile(file);
+      } else {
+        alert('Please select an image file.');
+      }
+    }
+  };
+
+  const handleSubmit = async () => {
+    setUploading(true);
+    let avatarUrl = avatarUrlInput; // Use URL input as default
+
+    if (avatarFile) {
+      try {
+        const storageRef = ref(storage, `avatars/${Date.now()}_${avatarFile.name}`);
+        await uploadBytes(storageRef, avatarFile);
+        avatarUrl = await getDownloadURL(storageRef);
+      } catch (error) {
+        console.error('Failed to upload avatar:', error);
+        alert('Failed to upload avatar. Using URL if provided.');
+      }
+    }
+
+    const updatedData = { ...formData, avatar: avatarUrl };
+    onSave(updatedData);
+    setUploading(false);
   };
 
   if (!isOpen) return null;
@@ -99,12 +132,18 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, onS
             </select>
           </div>
           <div className="mb-4">
-            <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">Avatar URL (optional)</label>
+            <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">Avatar Upload (optional)</label>
+            <input
+              type="file"
+              accept="image/*"
+              onChange={handleFileChange}
+              className="w-full p-3 border-2 border-gray-200 dark:border-gray-600 rounded-lg"
+            />
+            <label className="block text-xs font-semibold text-gray-700 dark:text-gray-300 mt-4 mb-2">Or Avatar URL</label>
             <input
               type="text"
-              name="avatar"
-              value={formData.avatar}
-              onChange={handleChange}
+              value={avatarUrlInput}
+              onChange={(e) => setAvatarUrlInput(e.target.value)}
               className="w-full p-3 border-2 border-gray-200 dark:border-gray-600 rounded-lg"
             />
           </div>
@@ -140,9 +179,10 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({ isOpen, onClose, onS
           </div>
           <button
             onClick={handleSubmit}
-            className="w-full bg-blue-600 text-white py-3 rounded-lg font-bold"
+            disabled={uploading}
+            className="w-full bg-blue-600 text-white py-3 rounded-lg font-bold disabled:opacity-50"
           >
-            Save Profile
+            {uploading ? 'Uploading...' : 'Save Profile'}
           </button>
         </div>
       </div>

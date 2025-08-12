@@ -7,6 +7,11 @@ interface TipHistoryProps {
   tips: Tip[];
 }
 
+const shortenAddress = (address: string) => {
+  if (!address) return '';
+  return `${address.slice(0, 6)}...${address.slice(-4)}`;
+};
+
 export const TipHistory: React.FC<TipHistoryProps> = ({ tips }) => {
   const formatTime = (timestamp: number) => {
     const now = Date.now();
@@ -53,7 +58,7 @@ export const TipHistory: React.FC<TipHistoryProps> = ({ tips }) => {
                 </span>
                 <span className="text-gray-500 dark:text-gray-400">→</span>
                 <span className="text-gray-600 dark:text-gray-300 text-sm">
-                  {tip.recipient}
+                  {shortenAddress(tip.recipient)}
                 </span>
               </div>
               
