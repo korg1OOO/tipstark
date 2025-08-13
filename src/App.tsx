@@ -166,7 +166,7 @@ function App() {
       };
       calls.push(tipCall);
 
-      const result = await wallet.account.execute(calls);
+      const result = await wallet.account.execute(calls, undefined, { version: 1 });
 
       const newTip: Tip = {
         id: Date.now().toString(),
