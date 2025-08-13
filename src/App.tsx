@@ -123,81 +123,82 @@ function App() {
 
   // Handle tipping
   const handleTip = async (amount: number, message: string) => {
-    if (!selectedCreator || !wallet.connected || !wallet.account) {
-      alert('Please connect your wallet and select a creator.');
-      return;
-    }
+  if (!selectedCreator || !wallet.connected || !wallet.account) {
+    alert('Please connect your wallet and select a creator.');
+    return;
+  }
 
-    if (selectedCreator.address.toLowerCase() === wallet.address?.toLowerCase()) {
-      alert('Cannot tip yourself!');
-      return;
-    }
+  if (selectedCreator.address.toLowerCase() === wallet.address?.toLowerCase()) {
+    alert('Cannot tip yourself!');
+    return;
+  }
 
-    try {
-      const provider = new Provider({ rpc: RPC_URL });
-      const amountInWei = BigInt(Math.floor(amount * 10 ** 18));
+  try {
+    const provider = new Provider({ rpc: RPC_URL });
+    const amountInWei = BigInt(Math.floor(amount * 10 ** 18));
 
-      // Check allowance
-      const allowanceCall = await provider.callContract({
+    // Check allowance
+    const allowanceCall = await provider.callContract({
+      contractAddress: STRK_ADDRESS,
+      entrypoint: 'allowance',
+      calldata: CallData.compile([wallet.address, CONTRACT_ADDRESS]),
+    });
+    if (allowanceCall.length !== 2) throw new Error('Invalid allowance response');
+    const allowanceLow = BigInt(allowanceCall[0]);
+    const allowanceHigh = BigInt(allowanceCall[1]);
+    const allowance = (allowanceHigh * (2n ** 128n)) + allowanceLow;
+
+    if (allowance < amountInWei) {
+      // Separate approve transaction
+      const approveCall = {
         contractAddress: STRK_ADDRESS,
-        entrypoint: 'allowance',
-        calldata: CallData.compile([wallet.address, CONTRACT_ADDRESS]),
-      });
-      if (allowanceCall.length !== 2) throw new Error('Invalid allowance response');
-      const allowanceLow = BigInt(allowanceCall[0]);
-      const allowanceHigh = BigInt(allowanceCall[1]);
-      const allowance = (allowanceHigh * (2n ** 128n)) + allowanceLow;
-
-      let calls = [];
-
-      if (allowance < amountInWei) {
-        const approveCall = {
-          contractAddress: STRK_ADDRESS,
-          entrypoint: 'approve',
-          calldata: CallData.compile([CONTRACT_ADDRESS, { low: amountInWei, high: 0n }]),
-        };
-        calls.push(approveCall);
-      }
-
-      const tipCall = {
-        contractAddress: CONTRACT_ADDRESS,
-        entrypoint: 'tip',
-        calldata: CallData.compile([selectedCreator.address, { low: amountInWei, high: 0n }]),
+        entrypoint: 'approve',
+        calldata: CallData.compile([CONTRACT_ADDRESS, { low: amountInWei, high: 0n }]),
       };
-      calls.push(tipCall);
-
-      const result = await wallet.account.execute(calls, undefined, { version: 1 });
-
-      const newTip: Tip = {
-        id: Date.now().toString(),
-        sender: wallet.address!,
-        recipient: selectedCreator.address,
-        amount,
-        timestamp: Date.now(),
-        message,
-        txHash: result.transaction_hash || 'pending',
-        status: 'pending',
-      };
-
-      // Save to Firestore
-      await addDoc(collection(db, "tips"), newTip);
-
-      setTips((prev) => [newTip, ...prev]);
-      updateBalance(wallet.balance - amount); // Optimistic update
-
-      // Optimistic tipCount update
-      setCreators((prev) =>
-        prev.map((c) =>
-          c.address.toLowerCase() === selectedCreator.address.toLowerCase()
-            ? { ...c, tipCount: c.tipCount + 1 }
-            : c
-        )
-      );
-    } catch (error) {
-      console.error('Failed to send tip:', error);
-      alert('Failed to send tip. Please try again.');
+      const approveResult = await wallet.account.execute(approveCall);
+      // Wait for confirmation (simple poll)
+      await provider.waitForTransaction(approveResult.transaction_hash, { retryInterval: 2000 });
+      console.log('Approve transaction confirmed:', approveResult.transaction_hash);
     }
-  };
+
+    // Now execute the tip
+    const tipCall = {
+      contractAddress: CONTRACT_ADDRESS,
+      entrypoint: 'tip',
+      calldata: CallData.compile([selectedCreator.address, { low: amountInWei, high: 0n }]),
+    };
+    const tipResult = await wallet.account.execute(tipCall);
+
+    const newTip: Tip = {
+      id: Date.now().toString(),
+      sender: wallet.address!,
+      recipient: selectedCreator.address,
+      amount,
+      timestamp: Date.now(),
+      message,
+      txHash: tipResult.transaction_hash || 'pending',
+      status: 'pending',
+    };
+
+    // Save to Firestore
+    await addDoc(collection(db, "tips"), newTip);
+
+    setTips((prev) => [newTip, ...prev]);
+    updateBalance(wallet.balance - amount); // Optimistic update
+
+    // Optimistic tipCount update
+    setCreators((prev) =>
+      prev.map((c) =>
+        c.address.toLowerCase() === selectedCreator.address.toLowerCase()
+          ? { ...c, tipCount: c.tipCount + 1 }
+          : c
+      )
+    );
+  } catch (error) {
+    console.error('Failed to send tip:', error);
+    alert('Failed to send tip. Please try again.');
+  }
+};
 
   // Poll for transaction status and refresh balance on confirm
   useEffect(() => {
