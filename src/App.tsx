@@ -17,7 +17,7 @@ import { db } from './firebaseConfig'; // Import the Firestore instance
 // Replace with your deployed contract address on Sepolia
 const CONTRACT_ADDRESS = '0x07548e3b74a946878599c9efa82a620629be6137e2627aad7000d5768a1a3019'; // Update after deployment on Sepolia
 const STRK_ADDRESS = '0x04718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d'; // STRK on Sepolia testnet
-const RPC_URL = 'https://starknet-sepolia.public.blastapi.io'; // Sepolia testnet RPC
+const RPC_URL = 'https://rpc.starknet-testnet.lava.build'; // Sepolia testnet RPC
 
 function App() {
   const { wallet, connect, disconnect, updateBalance } = useWallet();
