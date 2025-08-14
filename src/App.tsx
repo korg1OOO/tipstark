@@ -149,7 +149,7 @@ function App() {
     const allowance = (allowanceHigh * (2n ** 128n)) + allowanceLow;
 
     if (allowance < amountInWei) {
-      // Separate approve transaction (v1)
+      // Separate approve transaction (force v1)
       const approveCall = {
         contractAddress: STRK_ADDRESS,
         entrypoint: 'approve',
@@ -157,11 +157,19 @@ function App() {
       };
       const approveResult = await wallet.account.execute(approveCall, undefined, { version: '0x1' });
       console.log('Approve tx hash:', approveResult.transaction_hash);
-      // Wait for confirmation with timeout (e.g., 2 minutes)
-      await provider.waitForTransaction(approveResult.transaction_hash, { retryInterval: 5000, successStates: ['ACCEPTED_ON_L2', 'ACCEPTED_ON_L1'], errorStates: ['REJECTED'] });
+      // Wait for confirmation with 2-min timeout
+      const waitPromise = provider.waitForTransaction(approveResult.transaction_hash, { retryInterval: 5000 });
+      const timeoutPromise = new Promise((_, reject) => setTimeout(() => reject(new Error('Approve wait timed out')), 120000));
+      try {
+        await Promise.race([waitPromise, timeoutPromise]);
+      } catch (err) {
+        console.error('Approve wait failed:', err);
+        alert('Approve tx is taking too long. Check status on Voyager (https://sepolia.voyager.online/tx/' + approveResult.transaction_hash + ') and retry tip after confirmation.');
+        return;
+      }
     }
 
-    // Now execute the tip (v1)
+    // Now execute the tip (force v1)
     const tipCall = {
       contractAddress: CONTRACT_ADDRESS,
       entrypoint: 'tip',
