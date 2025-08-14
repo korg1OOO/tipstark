@@ -149,25 +149,25 @@ function App() {
     const allowance = (allowanceHigh * (2n ** 128n)) + allowanceLow;
 
     if (allowance < amountInWei) {
-      // Separate approve transaction
+      // Separate approve transaction (v1)
       const approveCall = {
         contractAddress: STRK_ADDRESS,
         entrypoint: 'approve',
         calldata: CallData.compile([CONTRACT_ADDRESS, { low: amountInWei, high: 0n }]),
       };
-      const approveResult = await wallet.account.execute(approveCall);
-      // Wait for confirmation (simple poll)
-      await provider.waitForTransaction(approveResult.transaction_hash, { retryInterval: 2000 });
-      console.log('Approve transaction confirmed:', approveResult.transaction_hash);
+      const approveResult = await wallet.account.execute(approveCall, undefined, { version: '0x1' });
+      console.log('Approve tx hash:', approveResult.transaction_hash);
+      // Wait for confirmation with timeout (e.g., 2 minutes)
+      await provider.waitForTransaction(approveResult.transaction_hash, { retryInterval: 5000, successStates: ['ACCEPTED_ON_L2', 'ACCEPTED_ON_L1'], errorStates: ['REJECTED'] });
     }
 
-    // Now execute the tip
+    // Now execute the tip (v1)
     const tipCall = {
       contractAddress: CONTRACT_ADDRESS,
       entrypoint: 'tip',
       calldata: CallData.compile([selectedCreator.address, { low: amountInWei, high: 0n }]),
     };
-    const tipResult = await wallet.account.execute(tipCall);
+    const tipResult = await wallet.account.execute(tipCall, undefined, { version: '0x1' });
 
     const newTip: Tip = {
       id: Date.now().toString(),
@@ -196,7 +196,7 @@ function App() {
     );
   } catch (error) {
     console.error('Failed to send tip:', error);
-    alert('Failed to send tip. Please try again.');
+    alert('Failed to send tip. Check console for details and try again.');
   }
 };
 
